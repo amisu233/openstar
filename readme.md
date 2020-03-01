@@ -9,9 +9,115 @@ grammar_cjkRuby: true
 注意：使用版本一定要大于 1.11.0 因为使用了ngx.var.request_id
 **代码写的比较好理解，肯定不优雅  哈~**
 
-**开源软件离不开大家的支持，如果公司用的可以，不妨购买技术支持服务吧【2000/月; 支付宝、微信：18801180400（留言注明公司等联系方式）。谢谢支持**
 
 正在更新说明WIKI篇,已经更新了安装篇，请自行查阅。
+
+更新：规则支持方式
+```
+现有：等于("") 包含("in") 列表("list") 字典("dict") 正则("jio|jo|***")
+增加：开头列表("start_list") -- 以什么什么开头列表
+      不区分大小写 开头列表("ustart_list")
+      结尾列表("end_list")  -- 以什么什么结尾列表
+      不区分大小写 结尾列表("uend_list")
+      包含列表("in_list")   -- 包含的列表形式
+      不区分大小写包含列表("uin_list")  --in_list扩展(不区分大小写)
+      【json 同 list 一样】
+增加：长度("len") [Min,Max] 表示大于等于 Min,且小于等于 Max
+EG：
+"host":[[
+          "www.baidu.",
+          "img.baidu."
+        ],
+            "start_list"
+        ]
+"referer":[[0,150],"len"]   --- referer 长度 在 0~150 之间
+```
+
+# 商业版本
+https://www.kancloud.cn/openstar/install/1136671
+<个人免费 ^_^>
+
+# 变更历史
+
+## 1.7 更新二阶匹配规则支持取反，动作取消next等
+原二阶规则：["baidu","in"],支持取反后：["baidu","in",true];最后的默认是nil也就是false,不取反的意思，所以规则基本可以之间复用，动作为next的需要修改一下即可
+
+## 1.7.1.11 更新规则匹配等于判断表达式支持("="),post_form支持("*")对所有表单名称进行匹配
+```
+["post_form",["(;|-|/)","jio",["*",2],false]] 对表单所有名称的文件名进行匹配
+
+["www.test.com",""]
+["www.test.com","="] 新增加表达方式
+
+```
+
+
+## 1.7.1.10 更新支持基于业务属性进行限速的功能
+network_Mod: `"network":{"maxReqs":30,"pTime":10,"blackTime":600,"guid":"cookie_userguid"}`，业务代码ngx.var[%guid%]，实际上是从ngx.var中去值进行限速操作，所以一定要配置正常；这里表示从cookie中名称为userguid的值进行频率统计来限速。默认则是用ip限速
+
+### 1.7.1.1 修改 host_Mod 规则匹配
+目前只有两种规则（app_ext | network） 请参考 conf_json/host_json/101.200.122.200.json
+
+### 1.7.0.24 原规则匹配变更：table-->list;list-->dict
+方便理解list表示序列，dict表示字典。
+EG：
+```
+"method":[
+            {
+                "POST":true,
+                "GET":true
+            },
+            "dict" --- 原 list
+        ]
+"ips": [[
+            "101.254.241.149",
+            "106.37.236.170"],
+            "list" --- 原 table
+        ]
+```
+
+## 1.6 更新计数count_dict到DB 2,key也进行分开，优化规则缓存
+规则进行了缓存，大幅提高性能，json文件保存进行了美化等......
+
+## 1.5 应一些朋友强烈要求增加Master/Slave模式
+主：定时将内存中的配置推送到redis, 从：定时从redis拉取数据到内存后，并保存到文件
+
+## 1.4 更新命名相关，以多规则匹配
+原来url改成uri，args改成query_string，修改的比较多，还有增加app_Mod实现多规则匹配，连接符支持OR
+
+## 1.3 更新跳转功能，可配置进行set-cookie操作
+可以配置某一个或者多个url使用跳转set-cookie操作。cookie是无状态的。
+
+## 1.2 更新支持拦截外部的csrf
+在referer_Mod处，增加action，`allow`表示允许且后续的规则不用在匹配（一般是静态资源如图片/js/css等），`next`表示白名单匹配成功后，会继续后面的规则匹配（这里就用于拦截外部的CSRF）增加`next`是因为原来代码中，若配置了防护站外的CSRF，后续的规则会bypass,所以增加的，这样就不会出现一些绕过问题。
+**后续的action理论上都支持该语法**
+
+## 1.1 增加app_Mod,丰富allow动作（ip）
+网站的某个目录进行IP白名单的访问控制（后台、phpmyadmin等）
+
+## 0.9 - 1.0 修改了大量全局函数
+在学习完[OpenResty最佳实践][7]后，代码太不专业，修改了大量全局变量、函数
+
+## 0.8 优化一下算法
+原来args是遍历每个参数在连接起来，感觉性能有时有点瓶颈，就使用新api取出url中的所有参数，经过测试效果要比原来好很多。
+
+## 0.7 增加集群版本
+当时大约有2-4台OpenStar服务器用于安全防护，通过脚本进行统一管理的，没有进行真正的统一管理，所以抽空的时候把redis用上。
+
+## 0.6 增加API相关操作
+因为是个蹩脚的程序员（没办法，搞安全的现在都被逼的写代码了；感谢春哥，我在写的过程中非常的快乐，所以就把项目叫做OpenStar[开心]，请勿见笑了）、前端界面我迟迟没有想好，所以先把一下操作的API封装了，也满足当时公司脚本化需求。
+
+## 0.4-0.5 增加配置文件操作
+刚开始都是写在lua代码中，随着功能增加，决定通过配置文件进行操作，所有就使用json方式进行定义配置文件。
+
+## 0.3 增加waf防护模块
+随着cc防护成功后，我陆续增加了waf相关的功能，规则参考了[modsecurity][8]、[loveshell][9]防护模块、以及互联网搜集的一些过滤点
+
+## 0.2 CC防护应用层版
+通过网络层+应用层的防护后，我后续增加了应用层的安全防护，如应用层set cookie、url跳转、js跳转等这样应用层的防护模块
+
+## 0.1 CC防护版
+当时是为了解决公司的CC攻击，由于一些硬件抗D设备在新的网络环境下（有CDN网络下）无法获取用户真实IP头，我才动手将第一个版本完成，当时功能就是有通过自定义HTTP头获取用户真实ip进行访问频率的限制。（OpenStar可以根据某个url进行频率限制，不仅仅是整个网站的[排除静态文件，如设置了referer\_Mod 或者 url\_Mod 中资源的allow操作]）
 
 # TOP
 
@@ -67,15 +173,15 @@ grammar_cjkRuby: true
 
 3：如有一些技术类问题，请尽量完整一些，包括ngx配置文件，和比较完整的代码，不然真心不好作答，有时间我会尽量回复（不一定是对的），没时间回复的请谅解。
 
-admin@17173.com邮箱已经没有在用了，请不要给这个发邮箱啦，18801180400@qq.com，也是手机、微信。
+admin@17173.com邮箱已经没有在用了，请不要给这个发邮箱啦。
 
-##TODO##
+## TODO ##
 
   无
 
   商业版说明：
 
-  **支持域名管理，支持geoip（按国家，城市进行拦截等），支持SQL语义分析，更强大的api接口，默认规则更强大等等**
+  **支持域名管理，支持geoip（按国家，城市进行拦截等），支持SQL语义分析(功能完善中)，更强大的api接口，默认规则更强大等等**
 
 ----------
 
@@ -130,7 +236,7 @@ ii：增加args参数尾巴，其value值合法性由控件和web服务器双向
 
 iii：增加POST参数，其value值合法性由控件和web服务器双向约定或加密产生，等等对下一次请求进行验证增加
 
-##重点##
+## 重点 ##
 
 这些防护算法我正在申请相关专利，个人用户以后永久免费的，仅对企业收费，请抄袭党，无耻公司放过小弟一码。
 
@@ -285,13 +391,13 @@ hostname：`["*\\.game\\.com","jio"]`
 
 ==>表示使用正则匹配host（**ngx.re.find($host,参数1，参数2)**）
 
-hostname：`[["127.0.0.1","127.0.0.1:8080"],"table"]`
+hostname：`[["127.0.0.1","127.0.0.1:8080"],"list"]`
 
-==>表示匹配参数1列表中所有host
+==>表示匹配参数1 列表 中所有host
 
-hostname：`[{"127.0.0.1":true,"127.0.0.1:5460":true},"list"]`
+hostname：`[{"127.0.0.1":true,"127.0.0.1:5460":true},"dict"]`
 
-==>表示匹配list中host为true的host
+==>表示匹配 字典 中host为true的host
 
 uri：`["/admin","in"]`
 
@@ -376,14 +482,14 @@ args：`["*","",["args_name",1]]`
 ## <span id = "step2">STEP 2：host\_method\_Mod（白名单）</span>
 
  - 说明：
- `{"state":"on","method":[["GET","POST"],"table"],"hostname":[["id.game.com","127.0.0.1"],"table"]}`
+ `{"state":"on","method":[["GET","POST"],"list"],"hostname":[["id.game.com","127.0.0.1"],"list"]}`
 
   上面的例子表示，规则开启，host为id\.game\.com、127.0.0.1允许的method是GET和POST
   state：表示规则是否开启
-  method：表示允许的method，参数2标识参数1是字符串、list、正则
+  method：表示允许的method，参数2标识参数1是字符串、列表(list)、正则、字典(dict)
   hostname：表示匹配的host，规则同上
 
-  > **`"method": [["GET","POST"],"table"]`==> 表示匹配的method是GET和POST**
+  > **`"method": [["GET","POST"],"list"]`==> 表示匹配的method是GET和POST**
 
   > **`"method": ["^(get|post)$","jio"]` ==> 表示匹配method是正则匹配**
 
@@ -504,9 +610,9 @@ args：`["*","",["args_name",1]]`
 
 ## STEP 9：useragent_Mod （黑名单）
   - 说明：
-  `{"state":"off","action":"deny","useragent":["HTTrack|harvest|audit|dirbuster|pangolin|nmap|sqln|-scan|hydra|Parser|libwww|BBBike|sqlmap|w3af|owasp|Nikto|fimap|havij|PycURL|zmeu|BabyKrokodil|netsparker|httperf|bench","jio"],"hostname":[["127.0.0.1:8080","127.0.0.1"],"table"]}`
+  `{"state":"off","action":"deny","useragent":["HTTrack|harvest|audit|dirbuster|pangolin|nmap|sqln|-scan|hydra|Parser|libwww|BBBike|sqlmap|w3af|owasp|Nikto|fimap|havij|PycURL|zmeu|BabyKrokodil|netsparker|httperf|bench","jio"],"hostname":[["127.0.0.1:8080","127.0.0.1"],"list"]}`
 
-  上面的例子表示，规则关闭，匹配host为127.0.0.1 和 127.0.0.1:8080 ，useragent正则匹配，匹配成功则拒绝访问，一般host设置为：`"hostname":["*",""]`表示所有（字符串匹配，非常快）
+  上面的例子表示，规则关闭，匹配host为127.0.0.1 或者 127.0.0.1:8080 ，useragent正则匹配，匹配成功则拒绝访问，一般host设置为：`"hostname":["*",""]`表示所有（字符串匹配，非常快）
   state：规则是否启用
   hostname：匹配host
   useragent：匹配agent
@@ -625,54 +731,6 @@ OpenStar测试服务器：
 
  总的来说，启用规则后，性能损失可以接受，根据自身的业务进行调整，还可以有所优化。
 
-
-# 变更历史
-
-## 1.7 更新二阶匹配规则支持取反，动作取消next等
-原二阶规则：["baidu","in"],支持取反后：["baidu","in",true];最后的默认是nil也就是false,不取反的意思，所以规则基本可以之间复用，动作为next的需要修改一下即可
-
-## 1.6 更新计数count_dict到DB 2,key也进行分开，优化规则缓存
-规则进行了缓存，大幅提高性能，json文件保存进行了美化等......
-
-## 1.5 应一些朋友强烈要求增加Master/Slave模式
-主：定时将内存中的配置推送到redis, 从：定时从redis拉取数据到内存后，并保存到文件
-
-## 1.4 更新命名相关，以多规则匹配
-原来url改成uri，args改成query_string，修改的比较多，还有增加app_Mod实现多规则匹配，连接符支持OR
-
-## 1.3 更新跳转功能，可配置进行set-cookie操作
-可以配置某一个或者多个url使用跳转set-cookie操作。cookie是无状态的。
-
-## 1.2 更新支持拦截外部的csrf
-在referer_Mod处，增加action，`allow`表示允许且后续的规则不用在匹配（一般是静态资源如图片/js/css等），`next`表示白名单匹配成功后，会继续后面的规则匹配（这里就用于拦截外部的CSRF）增加`next`是因为原来代码中，若配置了防护站外的CSRF，后续的规则会bypass,所以增加的，这样就不会出现一些绕过问题。
-**后续的action理论上都支持该语法**
-
-## 1.1 增加app_Mod,丰富allow动作（ip）
-网站的某个目录进行IP白名单的访问控制（后台、phpmyadmin等）
-
-## 0.9 - 1.0 修改了大量全局函数
-在学习完[OpenResty最佳实践][7]后，代码太不专业，修改了大量全局变量、函数
-
-## 0.8 优化一下算法
-原来args是遍历每个参数在连接起来，感觉性能有时有点瓶颈，就使用新api取出url中的所有参数，经过测试效果要比原来好很多。
-
-## 0.7 增加集群版本
-当时大约有2-4台OpenStar服务器用于安全防护，通过脚本进行统一管理的，没有进行真正的统一管理，所以抽空的时候把redis用上。
-
-## 0.6 增加API相关操作
-因为是个蹩脚的程序员（没办法，搞安全的现在都被逼的写代码了；感谢春哥，我在写的过程中非常的快乐，所以就把项目叫做OpenStar[开心]，请勿见笑了）、前端界面我迟迟没有想好，所以先把一下操作的API封装了，也满足当时公司脚本化需求。
-
-## 0.4-0.5 增加配置文件操作
-刚开始都是写在lua代码中，随着功能增加，决定通过配置文件进行操作，所有就使用json方式进行定义配置文件。
-
-## 0.3 增加waf防护模块
-随着cc防护成功后，我陆续增加了waf相关的功能，规则参考了[modsecurity][8]、[loveshell][9]防护模块、以及互联网搜集的一些过滤点
-
-## 0.2 CC防护应用层版
-通过网络层+应用层的防护后，我后续增加了应用层的安全防护，如应用层set cookie、url跳转、js跳转等这样应用层的防护模块
-
-## 0.1 CC防护版
-当时是为了解决公司的CC攻击，由于一些硬件抗D设备在新的网络环境下（有CDN网络下）无法获取用户真实IP头，我才动手将第一个版本完成，当时功能就是有通过自定义HTTP头获取用户真实ip进行访问频率的限制。（OpenStar可以根据某个url进行频率限制，不仅仅是整个网站的[排除静态文件，如设置了referer\_Mod 或者 url\_Mod 中资源的allow操作]）
 
 # 关于
 

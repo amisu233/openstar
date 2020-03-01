@@ -6,7 +6,13 @@ local optl = require("optl")
 
 local config_base = optl.config.base or {}
 
-local get_argsByName = optl.get_argsByName
+local get_argsByName
+if ngx.var.request_method == "POST" then
+    get_argsByName = optl.get_postByName
+elseif ngx.var.request_method == "GET" then
+    get_argsByName = optl.get_argsByName
+end
+
 local ngx_path = ngx.config.prefix()
 
 -- 接受相关参数
@@ -21,7 +27,7 @@ local _openstar_bak_path = _install_path.."/openstar."..(os.date("%Y-%m-%d-%H-%M
 local _update_config = get_argsByName("update_config")
 local _git_branch = get_argsByName("git_branch")
 if _git_branch == "" then
-	_git_branch = "master"
+    _git_branch = "master"
 end
 
 -- alias 异常处理
@@ -48,8 +54,8 @@ os.execute(string.format("ln -sf %s/conf/nginx.conf %s/nginx/conf/nginx.conf", _
 os.execute(string.format("ln -sf %s/conf/waf.conf %s/nginx/conf/waf.conf", _openstar_path, _install_path))
 
 if _update_config ~= "on" then
-	-- 复制旧版的配置和规则	
-	os.execute(string.format("cp -Rf %s/conf_json %s", _openstar_bak_path, _openstar_path))	
+    -- 复制旧版的配置和规则
+    os.execute(string.format("cp -Rf %s/conf_json %s", _openstar_bak_path, _openstar_path))
 end
 -- 删除旧版本
 --os.execute(string.format("rm -rf %s", _openstar_bak_path))
